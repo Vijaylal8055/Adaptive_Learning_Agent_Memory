@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Marketing Agents Dashboard</title>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        h1 { color: #333; }
+        button {
+            background-color: #007bff; color: white; border: none; padding: 10px 20px;
+            font-size: 16px; border-radius: 5px; cursor: pointer; margin-bottom: 15px;
+        }
+        button:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+        th { background: #007bff; color: white; }
+        tr:nth-child(even) { background: #f2f2f2; }
+        .Cold-Lead { background-color: #f8d7da; }       /* Red */
+        .General-Inquiry { background-color: #fff3cd; }  /* Yellow */
+        .Campaign-Qualified { background-color: #d4edda; } /* Green */
+        .Email-Sent { color: #007bff; font-weight: bold; }
+        .Call-Made { color: #28a745; font-weight: bold; }
+        .No-Action { color: #6c757d; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Adaptive Learning Agent Memory Dashboard</h1>
+
+    <button onclick="simulateLead()">Simulate Lead</button>
+
+    <table id="agentsTable">
+        <thead>
+            <tr>
+                <th>Lead ID</th>
+                <th>Lead Score / Context</th>
+                <th>Lead Category</th>
+                <th>Engagement Status</th>
+                <th>Campaign Recommendation</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const socket = io(`${window.location.protocol}//${window.location.host}`);
+        const tableBody = document.getElementById("agentsTable").getElementsByTagName('tbody')[0];
+
+        function updateRow(lead_id, column, value) {
+            let row = document.getElementById(`lead-${lead_id}`);
+            if (!row) {
+                row = tableBody.insertRow();
+                row.id = `lead-${lead_id}`;
+                for (let i = 0; i < 5; i++) row.insertCell(i).innerText = "";
+                row.cells[0].innerText = lead_id;
+            }
+            switch(column) {
+                case "context":
+                    row.cells[1].innerText = JSON.stringify(value);
+                    break;
+                case "category":
+                    row.cells[2].innerText = value;
+                    row.className = value.replace(/ /g, "-"); // color-code row
+                    break;
+                case "engagement_status":
+                    row.cells[3].innerText = value;
+                    break;
+                case "recommended_action":
+                    row.cells[4].innerText = value;
+                    break;
+            }
+        }
+
+        // WebSocket listeners
+        socket.on("lead_update", data => {
+            updateRow(data.lead_id, "context", data.context);
+            updateRow(data.lead_id, "category", data.category);
+        });
+        socket.on("engagement_update", data => {
+            updateRow(data.lead_id, "engagement_status", data.engagement_status);
+        });
+        socket.on("campaign_update", data => {
+            updateRow(data.lead_id, "recommended_action", data.recommended_action);
+        });
+
+        // Simulate lead via Flask endpoint
+        function simulateLead() {
+            fetch('/simulate-lead', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ context: { score: Math.random() } })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Simulated lead:", data);
+            })
+            .catch(err => console.error("Error simulating lead:", err));
+        }
+    </script>
+</body>
+</html>
